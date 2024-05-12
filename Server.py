@@ -1,12 +1,34 @@
-HEADER = 32
+from socket import *
+import os
 
-import socket
+path_to_save = 'C:\\Users\\AHMED\\Desktop\\New folder (2)\\Network-Project\\received_images\\'
+mss = 1024
+HEADERSIZE = 1024
 
-with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as server:
-    server.bind((socket.gethostname(), 8888))
+# Server side
+with socket(AF_INET, SOCK_DGRAM) as server:
+    server.bind((gethostname(), 8888))
+    
     while True:
-        message, address = server.recvfrom(1024)
-        newMessage = message.decode().upper()
-        newMessageSize = len(newMessage)
-        newMessage = f'{newMessageSize:<{HEADER - len(str(newMessageSize))}}{newMessage}'
-        server.sendto(newMessage.encode(), address)
+        packet_id, address = server.recvfrom(2048)  # Adjust buffer size to match packet size
+        packet_id = int(packet_id.decode())
+        # Receive the file ID
+        file_id_bytes, address = server.recvfrom(2048)  # Adjust buffer size to match packet size
+        file_id = int.from_bytes(file_id_bytes, byteorder='big')
+        print("Received packet:", packet_id, "for file ID:", file_id)
+        
+        # Receive data until the end of the file
+        data = b''
+        while True:
+            chunk, address = server.recvfrom(mss)
+            data += chunk
+            if len(chunk) < mss:
+                break
+        
+        # Write data to file
+        image_name = f'file_{file_id}.jpeg'  # Adjust filename as needed
+        image_path = os.path.join(path_to_save, image_name)
+        with open(image_path, 'ab') as image:
+            image.write(data)
+        
+        print("Packet", packet_id, "saved as:", image_path)
