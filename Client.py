@@ -64,15 +64,16 @@ def send_image(client, server_address):
     total_packets = len(packets)
     total_bytes = image_size
 
+    start_sending_time = time.time()  # Measure the time before sending the first packet
+    
     while base < len(packets):
-        send_start_time = time.time()  # Measure start time of sending the packet
         while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
+            send_start_time = time.time()  # Measure start time of sending the packet
             client.sendto(packets[next_seq_num], server_address)
             sent_packets.append(next_seq_num % 65536)
             send_times.append(send_start_time)
             print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
             next_seq_num += 1
-            send_start_time = time.time()  # Update start time for the next packet
         
         # Start the timer
         start_time = time.time()
@@ -94,8 +95,8 @@ def send_image(client, server_address):
                 retransmitted_packets.append(base)
                 break
 
-    transfer_end_time = time.time()  # Measure end time of the transfer
-    elapsed_time = transfer_end_time - transfer_start_time
+    end_sending_time = time.time()  # Measure the time after sending the last packet
+    elapsed_time = end_sending_time - start_sending_time  # Calculate elapsed time
 
     # Plot the sent packets
     plt.figure(figsize=(10, 6))
@@ -108,8 +109,8 @@ def send_image(client, server_address):
     plt.legend()
     plt.show()
 
-    print(f"Start time: {time.ctime(transfer_start_time)}")
-    print(f"End time: {time.ctime(transfer_end_time)}")
+    print(f"Start time: {time.ctime(start_sending_time)}")
+    print(f"End time: {time.ctime(end_sending_time)}")
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
     print(f"Number of packets sent: {total_packets}")
     print(f"Number of bytes sent: {total_bytes}")
