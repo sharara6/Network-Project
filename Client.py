@@ -4,19 +4,20 @@ import struct
 import time
 
 # Constants
-path1 ="C:\\Users\\Blu-Ray\\OneDrive\\Pictures\\network\\small file.jpeg"
-mss = 32
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\small file.jpeg"
+mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
 TIMEOUT = 2  # seconds
 
 def create_packet(packet_id, file_id, data, trailer):
-    # Packet structure: 16 bits for packet_id, 16 bits for file_id, 64 bytes for data, 32 bits for trailer
-    return struct.pack('!HH32sI', packet_id, file_id, data, trailer)
+    return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
 
 def create_ack(packet_id, file_id):
-    # Acknowledgment structure: 16 bits for packet_id, 16 bits for file_id
     return struct.pack('!HH', packet_id, file_id)
+
+def print_ack_received(packet_id):
+    print(f"ACK received for packet number: {packet_id}")
 
 def send_image(client, server_address):
     with open(path1, 'rb') as image:
@@ -35,7 +36,7 @@ def send_image(client, server_address):
     packet_id = 0
     offset = 0
     while offset < len(file_data):
-        chunk = file_data[offset:offset+mss]
+        chunk = file_data[offset:offset + mss]
         if len(chunk) < mss:
             chunk = chunk.ljust(mss, b'\0')
         trailer = 0x00000000
@@ -62,15 +63,17 @@ def send_image(client, server_address):
                 client.settimeout(TIMEOUT - (time.time() - start_time))
                 ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
+                print_ack_received(ack_packet_id)
                 
                 if ack_packet_id >= base:
                     base = ack_packet_id + 1
                     break
             except timeout:
+                print("Timeout occurred. Resending window from packet", base)
                 next_seq_num = base  # Resend window
                 break
 
 # Main
 server_address = (gethostname(), 8888)
 with socket(AF_INET, SOCK_DGRAM) as client:
-    send_image(client,server_address)
+    send_image(client, server_address)
