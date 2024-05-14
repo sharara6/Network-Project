@@ -65,8 +65,8 @@ def send_image(client, server_address):
     total_bytes = image_size
 
     while base < len(packets):
-        start_sending_time = time.time()  # Measure the time before sending the packet
         while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
+            start_sending_time = time.time()  # Measure the time before sending each packet
             client.sendto(packets[next_seq_num], server_address)
             sent_packets.append(next_seq_num % 65536)
             send_times.append(start_sending_time)  # Use the same start time for each sent packet
