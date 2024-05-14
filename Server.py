@@ -2,6 +2,8 @@ from socket import *
 import os
 import struct
 import random
+import time
+import matplotlib.pyplot as plt
 
 path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
 mss = 8  # 64 bits = 8 bytes
@@ -33,10 +35,19 @@ with socket(AF_INET, SOCK_DGRAM) as server:
     server.bind((gethostname(), 8888))
     expected_packet_id = 0
     file_data = b''
+    file_id = -1
+    num_packets_received = 0
+    num_bytes_received = 0
+
+    # Data for plotting
+    received_packets = []
+    receive_times = []
+
+    start_time = time.time()
 
     while True:
-        # Adjust buffer size to accommodate the entire packet
         packet, address = server.recvfrom(1024)
+        current_time = time.time()
         if len(packet) == 16:  # Check if it's a data packet
             if simulate_packet_loss():
                 print("Simulated packet loss.")
@@ -45,12 +56,30 @@ with socket(AF_INET, SOCK_DGRAM) as server:
             packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
             print(f"Received packet {packet_id} for file {file_id}")
 
+            received_packets.append(packet_id)
+            receive_times.append(current_time)
+
             if packet_id == expected_packet_id:
                 file_data += data
+                num_packets_received += 1
+                num_bytes_received += len(data)
                 if trailer == 0xFFFFFFFF:  # Last packet
                     save_data_to_file(file_id, file_data)
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
                     print(f"File {file_id} saved successfully.")
+                    print(f"Start time: {time.ctime(start_time)}")
+                    print(f"End time: {time.ctime(end_time)}")
+                    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+                    print(
+                        f"Number of packets received: {num_packets_received}")
+                    print(f"Number of bytes received: {num_bytes_received}")
+                    print(
+                        f"Average transfer rate: {num_bytes_received / elapsed_time:.2f} bytes/sec, {num_packets_received / elapsed_time:.2f} packets/sec")
                     file_data = b''  # Reset for next file
+                    num_packets_received = 0
+                    num_bytes_received = 0
+                    start_time = current_time  # Reset start time for next file
                 expected_packet_id += 1
 
             # Send acknowledgment for the last received in-order packet
@@ -58,8 +87,18 @@ with socket(AF_INET, SOCK_DGRAM) as server:
 
             print(f"Expected next packet ID: {expected_packet_id}")
         elif len(packet) == 4:  # Check if it's an acknowledgment packet
-            # Handle acknowledgment packets if needed
             continue
         else:
             print(
                 f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
+
+    # Plot the received packets
+    plt.figure(figsize=(10, 6))
+    plt.scatter(receive_times, received_packets,
+                c='blue', label='Received packets')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Packet ID')
+    plt.title(
+        f'Received Packet IDs over Time\nLoss rate: {PACKET_LOSS_RATE:.2%}, Window size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s')
+    plt.legend()
+    plt.show()

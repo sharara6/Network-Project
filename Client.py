@@ -1,84 +1,127 @@
 from socket import *
 import os
 import struct
-import random
 import time
 import matplotlib.pyplot as plt
 
-path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
+# Constants
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
-
-# Simulated packet loss rate (5% to 15%)
-PACKET_LOSS_RATE = random.uniform(0.05, 0.15)
-
-
-def save_data_to_file(file_id, data):
-    image_name = f'file_{file_id}.jpeg'
-    image_path = os.path.join(path_to_save, image_name)
-    with open(image_path, 'ab') as image:
-        image.write(data.strip(b'\0'))  # Strip null padding if present
+WINDOW_SIZE = 4
+TIMEOUT = 2  # seconds
 
 
-def send_acknowledgment(server_socket, packet_id, file_id, client_address):
-    acknowledgment = struct.pack('!HH', packet_id, file_id)
-    server_socket.sendto(acknowledgment, client_address)
-    print(f"Sent ACK for packet {packet_id} of file {file_id}")
+def create_packet(packet_id, file_id, data, trailer):
+    return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
 
 
-def simulate_packet_loss():
-    return random.random() < PACKET_LOSS_RATE
+def create_ack(packet_id, file_id):
+    return struct.pack('!HH', packet_id, file_id)
 
 
-# Server side
-with socket(AF_INET, SOCK_DGRAM) as server:
-    server.bind((gethostname(), 8888))
-    expected_packet_id = 0
-    file_data = b''
+def print_ack_received(packet_id):
+    print(f"ACK received for packet number: {packet_id}")
+
+
+def send_image(client, server_address):
+    with open(path1, 'rb') as image:
+        image_size = os.path.getsize(path1)
+
+        # Send the image size
+        size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
+        client.sendto(size_info, server_address)
+        print(f"Sent image size: {image_size}")
+
+        # Read the entire file into memory
+        file_data = image.read()
+
+    # Create packets
+    packets = []
+    file_id = 3
+    packet_id = 0
+    offset = 0
+    while offset < len(file_data):
+        chunk = file_data[offset:offset + mss]
+        if len(chunk) < mss:
+            chunk = chunk.ljust(mss, b'\0')
+        trailer = 0x00000000
+        if offset + mss >= len(file_data):
+            trailer = 0xFFFFFFFF  # Last packet
+        packet = create_packet(packet_id % 65536, file_id, chunk, trailer)
+        packets.append(packet)
+        packet_id += 1
+        offset += mss
+
+    # Go-Back-N Sliding Window
+    base = 0
+    next_seq_num = 0
+    retransmissions = 0
 
     # Data for plotting
-    received_packets = []
-    receive_times = []
+    sent_packets = []
+    send_times = []
+    retransmitted_packets = []
 
-    while True:
-        packet, address = server.recvfrom(1024)
-        current_time = time.time()
-        if len(packet) == 16:  # Check if it's a data packet
-            if simulate_packet_loss():
-                print("Simulated packet loss.")
-                continue  # Skip processing this packet to simulate loss
+    start_time = time.time()
+    total_packets = len(packets)
+    total_bytes = image_size
 
-            packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
-            print(f"Received packet {packet_id} for file {file_id}")
+    while base < len(packets):
+        while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
+            client.sendto(packets[next_seq_num], server_address)
+            sent_packets.append(next_seq_num % 65536)
+            send_times.append(time.time())
+            print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
+            next_seq_num += 1
 
-            received_packets.append(packet_id)
-            receive_times.append(current_time)
+        # Start the timer
+        start_time = time.time()
 
-            if packet_id == expected_packet_id:
-                file_data += data
-                if trailer == 0xFFFFFFFF:  # Last packet
-                    save_data_to_file(file_id, file_data)
-                    print(f"File {file_id} saved successfully.")
-                    file_data = b''  # Reset for next file
-                expected_packet_id += 1
+        while True:
+            try:
+                client.settimeout(TIMEOUT - (time.time() - start_time))
+                # 2 bytes packet_id + 2 bytes file_id
+                ack_data, _ = client.recvfrom(8)
+                ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
+                print_ack_received(ack_packet_id)
 
-            # Send acknowledgment for the last received in-order packet
-            send_acknowledgment(server, packet_id, file_id, address)
+                if ack_packet_id >= base:
+                    base = ack_packet_id + 1
+                    break
+            except timeout:
+                print("Timeout occurred. Resending window from packet", base)
+                retransmissions += 1
+                next_seq_num = base  # Resend window
+                retransmitted_packets.append(base)
+                break
 
-            print(f"Expected next packet ID: {expected_packet_id}")
-        elif len(packet) == 4:  # Check if it's an acknowledgment packet
-            continue
-        else:
-            print(
-                f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
 
-    # Plot the received packets
+    # Plot the sent packets
     plt.figure(figsize=(10, 6))
-    plt.scatter(receive_times, received_packets,
-                c='blue', label='Received packets')
+    plt.scatter(send_times, sent_packets, c='blue', label='Sent packets')
+    plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i]
+                for i in retransmitted_packets], c='red', label='Retransmitted packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
     plt.title(
-        f'Received Packet IDs over Time\nLoss rate: {PACKET_LOSS_RATE:.2%}, Window size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s')
+        f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}, Loss rate: {PACKET_LOSS_RATE:.2%}')
     plt.legend()
     plt.show()
+
+    print(f"Start time: {time.ctime(start_time)}")
+    print(f"End time: {time.ctime(end_time)}")
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    print(f"Number of packets sent: {total_packets}")
+    print(f"Number of bytes sent: {total_bytes}")
+    print(f"Number of retransmissions: {retransmissions}")
+    print(
+        f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
+
+
+# Main
+server_address = (gethostname(), 8888)
+with socket(AF_INET, SOCK_DGRAM) as client:
+    send_image(client, server_address)
