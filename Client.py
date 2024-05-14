@@ -11,31 +11,27 @@ HEADERSIZE = 1024
 WINDOW_SIZE = 4
 TIMEOUT = 2  # seconds
 
-
 def create_packet(packet_id, file_id, data, trailer):
     return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
-
 
 def create_ack(packet_id, file_id):
     return struct.pack('!HH', packet_id, file_id)
 
-
 def print_ack_received(packet_id):
     print(f"ACK received for packet number: {packet_id}")
-
 
 def send_image(client, server_address):
     with open(path1, 'rb') as image:
         image_size = os.path.getsize(path1)
-
+        
         # Send the image size
         size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
         client.sendto(size_info, server_address)
         print(f"Sent image size: {image_size}")
-
+        
         # Read the entire file into memory
         file_data = image.read()
-
+    
     # Create packets
     packets = []
     file_id = 3
@@ -52,7 +48,7 @@ def send_image(client, server_address):
         packets.append(packet)
         packet_id += 1
         offset += mss
-
+    
     # Go-Back-N Sliding Window
     base = 0
     next_seq_num = 0
@@ -74,18 +70,17 @@ def send_image(client, server_address):
             send_times.append(time.time())
             print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
             next_seq_num += 1
-
+        
         # Start the timer
         start_time = time.time()
-
+        
         while True:
             try:
                 client.settimeout(TIMEOUT - (time.time() - start_time))
-                # 2 bytes packet_id + 2 bytes file_id
-                ack_data, _ = client.recvfrom(8)
+                ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
                 print_ack_received(ack_packet_id)
-
+                
                 if ack_packet_id >= base:
                     base = ack_packet_id + 1
                     break
@@ -102,12 +97,10 @@ def send_image(client, server_address):
     # Plot the sent packets
     plt.figure(figsize=(10, 6))
     plt.scatter(send_times, sent_packets, c='blue', label='Sent packets')
-    plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i]
-                for i in retransmitted_packets], c='red', label='Retransmitted packets')
+    plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i] for i in retransmitted_packets], c='red', label='Retransmitted packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
-    plt.title(
-        f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}, Loss rate: {PACKET_LOSS_RATE:.2%}')
+    plt.title(f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}')
     plt.legend()
     plt.show()
 
@@ -117,9 +110,7 @@ def send_image(client, server_address):
     print(f"Number of packets sent: {total_packets}")
     print(f"Number of bytes sent: {total_bytes}")
     print(f"Number of retransmissions: {retransmissions}")
-    print(
-        f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
-
+    print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
 
 # Main
 server_address = (gethostname(), 8888)
