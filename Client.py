@@ -59,7 +59,7 @@ def send_image(client, server_address):
     send_times = []
     retransmitted_packets = []
 
-    start_time = time.time()
+    transfer_start_time = time.time()  # Measure start time of the transfer
     total_packets = len(packets)
     total_bytes = image_size
 
@@ -91,8 +91,8 @@ def send_image(client, server_address):
                 retransmitted_packets.append(base)
                 break
 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
+    transfer_end_time = time.time()  # Measure end time of the transfer
+    elapsed_time = transfer_end_time - transfer_start_time
 
     # Plot the sent packets
     plt.figure(figsize=(10, 6))
@@ -104,13 +104,16 @@ def send_image(client, server_address):
     plt.legend()
     plt.show()
 
-    print(f"Start time: {time.ctime(start_time)}")
-    print(f"End time: {time.ctime(end_time)}")
+    print(f"Start time: {time.ctime(transfer_start_time)}")
+    print(f"End time: {time.ctime(transfer_end_time)}")
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
     print(f"Number of packets sent: {total_packets}")
     print(f"Number of bytes sent: {total_bytes}")
     print(f"Number of retransmissions: {retransmissions}")
-    print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
+    if elapsed_time > 0:
+        print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
+    else:
+        print("Elapsed time is too small to calculate transfer rate.")
 
 # Main
 server_address = (gethostname(), 8888)
