@@ -4,7 +4,7 @@ import struct
 import time
 
 # Constants
-path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\small file.jpeg"
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
@@ -32,7 +32,7 @@ def send_image(client, server_address):
     
     # Create packets
     packets = []
-    file_id = 0
+    file_id = 3
     packet_id = 0
     offset = 0
     while offset < len(file_data):
@@ -42,7 +42,7 @@ def send_image(client, server_address):
         trailer = 0x00000000
         if offset + mss >= len(file_data):
             trailer = 0xFFFFFFFF  # Last packet
-        packet = create_packet(packet_id, file_id, chunk, trailer)
+        packet = create_packet(packet_id % 65536, file_id, chunk, trailer)
         packets.append(packet)
         packet_id += 1
         offset += mss
