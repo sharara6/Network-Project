@@ -10,6 +10,7 @@ mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
 TIMEOUT = 2  # seconds
+PACKET_LOSS_RATE = 0.1  # Simulated packet loss rate
 
 def create_packet(packet_id, file_id, data, trailer):
     return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
@@ -64,12 +65,14 @@ def send_image(client, server_address):
     total_bytes = image_size
 
     while base < len(packets):
+        send_start_time = time.time()  # Measure start time of sending the packet
         while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
             client.sendto(packets[next_seq_num], server_address)
             sent_packets.append(next_seq_num % 65536)
-            send_times.append(time.time())
+            send_times.append(send_start_time)
             print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
             next_seq_num += 1
+            send_start_time = time.time()  # Update start time for the next packet
         
         # Start the timer
         start_time = time.time()
@@ -97,10 +100,11 @@ def send_image(client, server_address):
     # Plot the sent packets
     plt.figure(figsize=(10, 6))
     plt.scatter(send_times, sent_packets, c='blue', label='Sent packets')
-    plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i] for i in retransmitted_packets], c='red', label='Retransmitted packets')
+    if retransmitted_packets:
+        plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i] for i in retransmitted_packets], c='red', label='Retransmitted packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
-    plt.title(f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}')
+    plt.title(f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}, Loss rate: {PACKET_LOSS_RATE:.2%}')
     plt.legend()
     plt.show()
 
@@ -110,10 +114,7 @@ def send_image(client, server_address):
     print(f"Number of packets sent: {total_packets}")
     print(f"Number of bytes sent: {total_bytes}")
     print(f"Number of retransmissions: {retransmissions}")
-    if elapsed_time > 0:
-        print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
-    else:
-        print("Elapsed time is too small to calculate transfer rate.")
+    print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
 
 # Main
 server_address = (gethostname(), 8888)
