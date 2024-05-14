@@ -1,7 +1,7 @@
 from socket import *
 import os
 import struct
-import time
+import timeit
 import matplotlib.pyplot as plt
 
 # Constants
@@ -60,13 +60,15 @@ def send_image(client, server_address):
     send_times = []
     retransmitted_packets = []
 
-    transfer_start_time = time.time()  # Measure start time of the transfer
+    # Measure start time of the transfer
+    transfer_start_time = timeit.default_timer()
     total_packets = len(packets)
     total_bytes = image_size
 
     while base < len(packets):
         while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
-            start_sending_time = time.time()  # Measure the time before sending each packet
+            # Measure the time before sending each packet
+            start_sending_time = timeit.default_timer()
             client.sendto(packets[next_seq_num], server_address)
             sent_packets.append(next_seq_num % 65536)
             send_times.append(start_sending_time)  # Use the same start time for each sent packet
@@ -75,11 +77,11 @@ def send_image(client, server_address):
             time.sleep(0.1)  # Introduce a small delay between packet transmissions
         
         # Start the timer
-        start_time = time.time()
+        start_time = timeit.default_timer()
         
         while True:
             try:
-                client.settimeout(TIMEOUT - (time.time() - start_time))
+                client.settimeout(TIMEOUT - (timeit.default_timer() - start_time))
                 ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
                 print_ack_received(ack_packet_id)
@@ -94,8 +96,11 @@ def send_image(client, server_address):
                 retransmitted_packets.append(base)
                 break
 
-    transfer_end_time = time.time()  # Measure end time of the transfer
-    elapsed_time = transfer_end_time - transfer_start_time  # Calculate elapsed time
+    # Measure end time of the transfer
+    transfer_end_time = timeit.default_timer()
+
+    # Calculate elapsed time
+    elapsed_time = transfer_end_time - transfer_start_time
 
     # Plot the sent packets
     plt.figure(figsize=(10, 6))
@@ -112,11 +117,4 @@ def send_image(client, server_address):
     print(f"End time: {time.ctime(transfer_end_time)}")
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
     print(f"Number of packets sent: {total_packets}")
-    print(f"Number of bytes sent: {total_bytes}")
-    print(f"Number of retransmissions: {retransmissions}")
-    print(f"Average transfer rate: {total_bytes / elapsed_time:.2f} bytes/sec, {total_packets / elapsed_time:.2f} packets/sec")
-
-# Main
-server_address = (gethostname(), 8888)
-with socket(AF_INET, SOCK_DGRAM) as client:
-    send_image(client, server_address)
+    print(f"Number of bytes sent: {total
