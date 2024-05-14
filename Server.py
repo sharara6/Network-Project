@@ -21,6 +21,7 @@ def save_data_to_file(file_id, data):
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
     acknowledgment = struct.pack('!HH', packet_id, file_id)
     server_socket.sendto(acknowledgment, client_address)
+    print(f"Sent ACK for packet {packet_id} of file {file_id}")
 
 
 def simulate_packet_loss():
@@ -42,6 +43,7 @@ with socket(AF_INET, SOCK_DGRAM) as server:
                 continue  # Skip processing this packet to simulate loss
 
             packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
+            print(f"Received packet {packet_id} for file {file_id}")
 
             if packet_id == expected_packet_id:
                 file_data += data
@@ -54,7 +56,6 @@ with socket(AF_INET, SOCK_DGRAM) as server:
             # Send acknowledgment for the last received in-order packet
             send_acknowledgment(server, packet_id, file_id, address)
 
-            print(f"Received packet {packet_id} for file {file_id}")
             print(f"Expected next packet ID: {expected_packet_id}")
         elif len(packet) == 4:  # Check if it's an acknowledgment packet
             # Handle acknowledgment packets if needed
