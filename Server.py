@@ -7,7 +7,7 @@ import random
 from socket import *
 
 path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
-mss = 8
+mss = 1024
 HEADERSIZE = 1024
 
 def save_data_to_file(file_id, data):
@@ -54,12 +54,10 @@ with socket(AF_INET, SOCK_DGRAM) as server:
                     print("Simulated packet loss.")
                     continue
 
-                try:
-                    packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
-                    print(f"Received packet {packet_id} for file {file_id}")
-                except struct.error as e:
-                    print(f"Error unpacking packet: {e}")
-                    continue
+                
+                packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
+                print(f"Received packet {packet_id} for file {file_id}")
+                
 
                 received_packets.append(packet_id)
                 receive_times.append(current_time)

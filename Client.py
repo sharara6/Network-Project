@@ -73,7 +73,7 @@ def send_image(client, server_address):
         while True:
             try:
                 client.settimeout(TIMEOUT - (time.time() - start_time))
-                ack_data, _ = client.recvfrom(8)  
+                ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
                 print_ack_received(ack_packet_id)
                 
