@@ -71,11 +71,9 @@ with socket(AF_INET, SOCK_DGRAM) as server:
                     print(f"Start time: {time.ctime(start_time)}")
                     print(f"End time: {time.ctime(end_time)}")
                     print(f"Elapsed time: {elapsed_time:.2f} seconds")
-                    print(
-                        f"Number of packets received: {num_packets_received}")
+                    print(f"Number of packets received: {num_packets_received}")
                     print(f"Number of bytes received: {num_bytes_received}")
-                    print(
-                        f"Average transfer rate: {num_bytes_received / elapsed_time:.2f} bytes/sec, {num_packets_received / elapsed_time:.2f} packets/sec")
+                    print(f"Average transfer rate: {num_bytes_received / elapsed_time:.2f} bytes/sec, {num_packets_received / elapsed_time:.2f} packets/sec")
                     file_data = b''  # Reset for next file
                     num_packets_received = 0
                     num_bytes_received = 0
@@ -89,16 +87,13 @@ with socket(AF_INET, SOCK_DGRAM) as server:
         elif len(packet) == 4:  # Check if it's an acknowledgment packet
             continue
         else:
-            print(
-                f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
+            print( f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
 
     # Plot the received packets
     plt.figure(figsize=(10, 6))
-    plt.scatter(receive_times, received_packets,
-                c='blue', label='Received packets')
+    plt.scatter(receive_times, received_packets, c='blue', label='Received packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
-    plt.title(
-        f'Received Packet IDs over Time\nLoss rate: {PACKET_LOSS_RATE:.2%}, Window size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s')
+    plt.title(f'Received Packet IDs over Time\nLoss rate: {PACKET_LOSS_RATE:.2%}, Window size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s')
     plt.legend()
     plt.show()
