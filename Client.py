@@ -4,12 +4,11 @@ import struct
 import time
 import matplotlib.pyplot as plt
 
-# Constants
 path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
-mss = 8  # 64 bits = 8 bytes
+mss = 1024
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
-TIMEOUT = 1  # seconds
+TIMEOUT = 1
 
 def create_packet(packet_id, file_id, data, trailer):
         return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
@@ -41,7 +40,7 @@ def send_image(client, server_address):
             chunk = chunk.ljust(mss, b'\0')
         trailer = 0x00000000
         if offset + mss >= len(file_data):
-            trailer = 0xFFFFFFFF  # Last packet
+            trailer = 0xFFFFFFFF 
         packet = create_packet(packet_id % 65536, file_id, chunk, trailer)
         if packet:
             packets.append(packet)
@@ -83,7 +82,7 @@ def send_image(client, server_address):
             except timeout:
                 print("Timeout occurred. Resending window from packet", base)
                 retransmissions += 1
-                next_seq_num = base  # Resend window
+                next_seq_num = b
                 retransmitted_packets.append(base)
                 break
 
@@ -110,7 +109,6 @@ def send_image(client, server_address):
     else:
         print("Elapsed time is too small to calculate transfer rate.")
 
-# Main
 server_address = (gethostname(), 8888)
 with socket(AF_INET, SOCK_DGRAM) as client:
     send_image(client,server_address)
