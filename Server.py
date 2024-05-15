@@ -11,38 +11,28 @@ mss = 8
 HEADERSIZE = 1024
 
 def save_data_to_file(file_id, data):
-    try:
         image_name = f'file_{file_id}.jpeg'
         image_path = os.path.join(path_to_save, image_name)
         with open(image_path, 'ab') as image:
-            image.write(data.strip(b'\0'))  # Strip null padding if present
+            image.write(data.strip(b'\0'))  
         return image_path
-    except Exception as e:
-        print(f"Error saving file {file_id}: {e}")
-        return None
+
 
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
-    try:
         acknowledgment = struct.pack('!HH', packet_id, file_id)
         server_socket.sendto(acknowledgment, client_address)
         print(f"Sent ACK for packet {packet_id} of file {file_id}")
-    except Exception as e:
-        print(f"Error sending ACK for packet {packet_id}: {e}")
 
 def open_image(image_path):
-    try:
         img = Image.open(image_path)
         img.show()
         print(f"Opened image {image_path}")
-    except Exception as e:
-        print(f"Failed to open image {image_path}: {e}")
 
 def simulate_packet_loss():
     rand = random.random()
     return 0.05 <= rand <= 0.15
 
 with socket(AF_INET, SOCK_DGRAM) as server:
-    try:
         server.bind((gethostname(), 8888))
         expected_packet_id = 0
         file_data = b''
@@ -111,5 +101,3 @@ with socket(AF_INET, SOCK_DGRAM) as server:
         plt.title(f'Received Packet IDs over Time')
         plt.legend()
         plt.show()
-    except Exception as e:
-        print(f"Error in server: {e}")
