@@ -12,28 +12,27 @@ WINDOW_SIZE = 4
 TIMEOUT = 2  # seconds
 PACKET_LOSS_RATE = 0.1  # Simulated packet loss rate
 
+
 def create_packet(packet_id, file_id, data, trailer):
     return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
+
 
 def create_ack(packet_id, file_id):
     return struct.pack('!HH', packet_id, file_id)
 
+
 def print_ack_received(packet_id):
     print(f"ACK received for packet number: {packet_id}")
+
 
 def send_image(client, server_address):
     with open(path1, 'rb') as image:
         image_size = os.path.getsize(path1)
-        
-        # Send the image size
         size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
         client.sendto(size_info, server_address)
         print(f"Sent image size: {image_size}")
-        
-        # Read the entire file into memory
         file_data = image.read()
-    
-    # Create packets
+
     packets = []
     file_id = 3
     packet_id = 0
@@ -44,72 +43,66 @@ def send_image(client, server_address):
             chunk = chunk.ljust(mss, b'\0')
         trailer = 0x00000000
         if offset + mss >= len(file_data):
-            trailer = 0xFFFFFFFF  # Last packet
+            trailer = 0xFFFFFFFF
         packet = create_packet(packet_id % 65536, file_id, chunk, trailer)
         packets.append(packet)
         packet_id += 1
         offset += mss
-    
-    # Go-Back-N Sliding Window
+
     base = 0
     next_seq_num = 0
     retransmissions = 0
 
-    # Data for plotting
     sent_packets = []
     send_times = []
     retransmitted_packets = []
 
-    # Measure start time of the transfer
     transfer_start_time = timeit.default_timer()
     total_packets = len(packets)
     total_bytes = image_size
 
     while base < len(packets):
         while next_seq_num < base + WINDOW_SIZE and next_seq_num < len(packets):
-            # Measure the time before sending each packet
             start_sending_time = timeit.default_timer()
             client.sendto(packets[next_seq_num], server_address)
             sent_packets.append(next_seq_num % 65536)
-            send_times.append(start_sending_time)  # Use the same start time for each sent packet
+            send_times.append(start_sending_time)
             print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
             next_seq_num += 1
-            time.sleep(0.1)  # Introduce a small delay between packet transmissions
-        
-        # Start the timer
+            time.sleep(0.1)
+
         start_time = timeit.default_timer()
-        
+
         while True:
             try:
-                client.settimeout(TIMEOUT - (timeit.default_timer() - start_time))
-                ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
+                client.settimeout(
+                    TIMEOUT - (timeit.default_timer() - start_time))
+                ack_data, _ = client.recvfrom(8)
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
                 print_ack_received(ack_packet_id)
-                
+
                 if ack_packet_id >= base:
                     base = ack_packet_id + 1
                     break
             except timeout:
                 print("Timeout occurred. Resending window from packet", base)
                 retransmissions += 1
-                next_seq_num = base  # Resend window
+                next_seq_num = base
                 retransmitted_packets.append(base)
                 break
 
-    # Measure end time of the transfer
     transfer_end_time = timeit.default_timer()
-
-    # Calculate elapsed time
     elapsed_time = transfer_end_time - transfer_start_time
 
-    # Plot the sent packets
     plt.figure(figsize=(10, 6))
     plt.scatter(send_times, sent_packets, c='blue', label='Sent packets')
     if retransmitted_packets:
-        plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i] for i in retransmitted_packets], c='red', label='Retransmitted packets')
+        plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i]
+                    for i in retransmitted_packets], c='red', label='Retransmitted packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
-    plt.title(f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}, Loss rate: {PACKET_LOSS_RATE:.2%}')
+    plt.title(
+        f'Sent Packet IDs over Time\nWindow size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s, Retransmissions: {retransmissions}, Loss rate: {PACKET_LOSS_RATE:.2%}')
     plt.legend()
     plt.show()
 
@@ -117,4 +110,4 @@ def send_image(client, server_address):
     print(f"End time: {time.ctime(transfer_end_time)}")
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
     print(f"Number of packets sent: {total_packets}")
-    print(f"Number of bytes sent: {total
+    print(f"Number of bytes sent: {total_bytes}")
