@@ -4,12 +4,13 @@ import struct
 import time
 import matplotlib.pyplot as plt
 from PIL import Image
+import random
 
 path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
 mss = 8 
 HEADERSIZE = 1024
 
-def save_data_to_file(file_id, data):#Taha #################################################################
+def save_data_to_file(file_id, data):
     image_name = f'file_{file_id}.jpeg'
     image_path = os.path.join(path_to_save, image_name)
     with open(image_path, 'ab') as image:
@@ -17,8 +18,6 @@ def save_data_to_file(file_id, data):#Taha #####################################
     return image_path
 
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
-    #server_socket = el UDP socket elly b nrecieve packet 3alih
-
     acknowledgment = struct.pack('!HH', packet_id, file_id)
     server_socket.sendto(acknowledgment, client_address)
     print(f"Sent ACK for packet {packet_id} of file {file_id}")
@@ -31,6 +30,9 @@ def open_image(image_path):
     except Exception as e:
         print(f"Failed to open image {image_path}: {e}")
 
+def simulate_packet_loss():
+    rand = random.random()
+    return 0.05 <= rand <= 0.15
 
 # Server side
 with socket(AF_INET, SOCK_DGRAM) as server:
@@ -51,6 +53,10 @@ with socket(AF_INET, SOCK_DGRAM) as server:
         packet, address = server.recvfrom(1024)
         current_time = time.time()
         if len(packet) == 16:  # Check if it's a data packet
+            if simulate_packet_loss():
+                print("Simulated packet loss.")
+                continue  # Skip processing this packet to simulate loss
+
             packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
             print(f"Received packet {packet_id} for file {file_id}")
 
