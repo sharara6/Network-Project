@@ -5,12 +5,11 @@ import time
 import matplotlib.pyplot as plt
 from PIL import Image
 
-# Constants
 path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
-mss = 8  # 64 bits = 8 bytes
+mss = 8 
 HEADERSIZE = 1024
 
-def save_data_to_file(file_id, data):
+def save_data_to_file(file_id, data):#Taha #################################################################
     image_name = f'file_{file_id}.jpeg'
     image_path = os.path.join(path_to_save, image_name)
     with open(image_path, 'ab') as image:
@@ -18,6 +17,8 @@ def save_data_to_file(file_id, data):
     return image_path
 
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
+    #server_socket = el UDP socket elly b nrecieve packet 3alih
+
     acknowledgment = struct.pack('!HH', packet_id, file_id)
     server_socket.sendto(acknowledgment, client_address)
     print(f"Sent ACK for packet {packet_id} of file {file_id}")
@@ -30,12 +31,6 @@ def open_image(image_path):
     except Exception as e:
         print(f"Failed to open image {image_path}: {e}")
 
-# Ensure the path to save files exists
-if not os.path.exists(path_to_save):
-    os.makedirs(path_to_save)
-    print(f"Created directory: {path_to_save}")
-else:
-    print(f"Directory already exists: {path_to_save}")
 
 # Server side
 with socket(AF_INET, SOCK_DGRAM) as server:
