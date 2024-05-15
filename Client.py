@@ -5,40 +5,31 @@ import time
 import matplotlib.pyplot as plt
 
 # Constants
-path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\small file.jpeg"
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
 TIMEOUT = 1  # seconds
 
 def create_packet(packet_id, file_id, data, trailer):
-    try:
         return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
-    except struct.error as e:
-        print(f"Error creating packet {packet_id}: {e}")
-        return None
+    
 
 def create_ack(packet_id, file_id):
-    try:
         return struct.pack('!HH', packet_id, file_id)
-    except struct.error as e:
-        print(f"Error creating ACK for packet {packet_id}: {e}")
-        return None
+    
 
 def print_ack_received(packet_id):
     print(f"ACK received for packet number: {packet_id}")
 
 def send_image(client, server_address):
-    try:
-        with open(path1, 'rb') as image:
-            image_size = os.path.getsize(path1)
-            size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
-            client.sendto(size_info, server_address)
-            print(f"Sent image size: {image_size}")
-            file_data = image.read()
-    except (OSError, IOError) as e:
-        print(f"Error reading image file: {e}")
-        return
+
+    with open(path1, 'rb') as image:
+        image_size = os.path.getsize(path1)
+        size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
+        client.sendto(size_info, server_address)
+        print(f"Sent image size: {image_size}")
+        file_data = image.read()
     
     packets = []
     file_id = 0
@@ -82,7 +73,7 @@ def send_image(client, server_address):
         while True:
             try:
                 client.settimeout(TIMEOUT - (time.time() - start_time))
-                ack_data, _ = client.recvfrom(8)  # 2 bytes packet_id + 2 bytes file_id
+                ack_data, _ = client.recvfrom(8)  
                 ack_packet_id, ack_file_id = struct.unpack('!HH', ack_data)
                 print_ack_received(ack_packet_id)
                 
@@ -94,9 +85,6 @@ def send_image(client, server_address):
                 retransmissions += 1
                 next_seq_num = base  # Resend window
                 retransmitted_packets.append(base)
-                break
-            except struct.error as e:
-                print(f"Error unpacking ACK: {e}")
                 break
 
     transfer_end_time = time.time()
