@@ -1,34 +1,41 @@
 from socket import *
 import os
 import struct
-import random
 import time
 import matplotlib.pyplot as plt
+from PIL import Image
 
+# Constants
 path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New folder"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
-
-
-
 
 def save_data_to_file(file_id, data):
     image_name = f'file_{file_id}.jpeg'
     image_path = os.path.join(path_to_save, image_name)
     with open(image_path, 'ab') as image:
         image.write(data.strip(b'\0'))  # Strip null padding if present
-
+    return image_path
 
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
     acknowledgment = struct.pack('!HH', packet_id, file_id)
     server_socket.sendto(acknowledgment, client_address)
     print(f"Sent ACK for packet {packet_id} of file {file_id}")
 
+def open_image(image_path):
+    try:
+        img = Image.open(image_path)
+        img.show()
+        print(f"Opened image {image_path}")
+    except Exception as e:
+        print(f"Failed to open image {image_path}: {e}")
 
-def simulate_packet_loss():
-    rand = random.random()
-    return  rand <= 0.15 and rand >= 0.05
-
+# Ensure the path to save files exists
+if not os.path.exists(path_to_save):
+    os.makedirs(path_to_save)
+    print(f"Created directory: {path_to_save}")
+else:
+    print(f"Directory already exists: {path_to_save}")
 
 # Server side
 with socket(AF_INET, SOCK_DGRAM) as server:
@@ -49,10 +56,6 @@ with socket(AF_INET, SOCK_DGRAM) as server:
         packet, address = server.recvfrom(1024)
         current_time = time.time()
         if len(packet) == 16:  # Check if it's a data packet
-            if simulate_packet_loss():
-                print("Simulated packet loss.")
-                continue  # Skip processing this packet to simulate loss
-
             packet_id, file_id, data, trailer = struct.unpack('!HH8sI', packet)
             print(f"Received packet {packet_id} for file {file_id}")
 
@@ -64,7 +67,8 @@ with socket(AF_INET, SOCK_DGRAM) as server:
                 num_packets_received += 1
                 num_bytes_received += len(data)
                 if trailer == 0xFFFFFFFF:  # Last packet
-                    save_data_to_file(file_id, file_data)
+                    image_path = save_data_to_file(file_id, file_data)
+                    open_image(image_path)  # Open the image once saved
                     end_time = time.time()
                     elapsed_time = end_time - start_time
                     print(f"File {file_id} saved successfully.")
@@ -87,13 +91,13 @@ with socket(AF_INET, SOCK_DGRAM) as server:
         elif len(packet) == 4:  # Check if it's an acknowledgment packet
             continue
         else:
-            print( f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
+            print(f"Received incorrect packet size: {len(packet)} bytes, expected 16 bytes or 4 bytes for ACK.")
 
     # Plot the received packets
     plt.figure(figsize=(10, 6))
     plt.scatter(receive_times, received_packets, c='blue', label='Received packets')
     plt.xlabel('Time (s)')
     plt.ylabel('Packet ID')
-    plt.title(f'Received Packet IDs over Time\nLoss rate: {PACKET_LOSS_RATE:.2%}, Window size: {WINDOW_SIZE}, Timeout: {TIMEOUT}s')
+    plt.title(f'Received Packet IDs over Time')
     plt.legend()
     plt.show()
