@@ -19,8 +19,9 @@ def save_data_to_file(file_id, data):
 
 
 def send_acknowledgment(server_socket, packet_id, file_id, client_address):
-        acknowledgment = struct.pack('!HH', packet_id, file_id)
-        server_socket.sendto(acknowledgment, client_address)
+        #server_socket: el socket bta3 el UDP elly b ysen el data 
+        acknowledgment = struct.pack('!HH', packet_id, file_id) #use struct.pack to create an ACK (!HH m3naha 16 bit kol wa7da 2 bytes ! means big edian)
+        server_socket.sendto(acknowledgment, client_address)#bib3at lel client el ACK
         print(f"Sent ACK for packet {packet_id} of file {file_id}")
 
 def open_image(image_path):
