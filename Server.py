@@ -9,8 +9,7 @@ path_to_save = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\New fold
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 
-# Simulated packet loss rate (5% to 15%)
-PACKET_LOSS_RATE = random.uniform(0.05, 0.15)
+
 
 
 def save_data_to_file(file_id, data):
@@ -27,7 +26,8 @@ def send_acknowledgment(server_socket, packet_id, file_id, client_address):
 
 
 def simulate_packet_loss():
-    return random.random() < PACKET_LOSS_RATE
+    rand = random.random()
+    return  rand <= 0.15 and rand >= 0.05
 
 
 # Server side

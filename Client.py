@@ -5,7 +5,7 @@ import time
 import matplotlib.pyplot as plt
 
 # Constants
-path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\small file.jpeg"
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
