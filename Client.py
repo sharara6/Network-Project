@@ -5,34 +5,41 @@ import time
 import matplotlib.pyplot as plt
 
 # Constants
-path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\medium file.jpeg"
+path1 = "C:\\Users\\AHMED\\Desktop\\New folder\\Network-Project\\small file.jpeg"
 mss = 8  # 64 bits = 8 bytes
 HEADERSIZE = 1024
 WINDOW_SIZE = 4
-TIMEOUT = 2  # seconds
+TIMEOUT = 1  # seconds
 
 def create_packet(packet_id, file_id, data, trailer):
-    return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
+    try:
+        return struct.pack('!HH8sI', packet_id, file_id, data, trailer)
+    except struct.error as e:
+        print(f"Error creating packet {packet_id}: {e}")
+        return None
 
 def create_ack(packet_id, file_id):
-    return struct.pack('!HH', packet_id, file_id)
+    try:
+        return struct.pack('!HH', packet_id, file_id)
+    except struct.error as e:
+        print(f"Error creating ACK for packet {packet_id}: {e}")
+        return None
 
 def print_ack_received(packet_id):
     print(f"ACK received for packet number: {packet_id}")
 
 def send_image(client, server_address):
-    with open(path1, 'rb') as image:
-        image_size = os.path.getsize(path1)
-        
-        # Send the image size
-        size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
-        client.sendto(size_info, server_address)
-        print(f"Sent image size: {image_size}")
-        
-        # Read the entire file into memory
-        file_data = image.read()
+    try:
+        with open(path1, 'rb') as image:
+            image_size = os.path.getsize(path1)
+            size_info = f'{image_size:<{HEADERSIZE - len(str(HEADERSIZE))}}'.encode()
+            client.sendto(size_info, server_address)
+            print(f"Sent image size: {image_size}")
+            file_data = image.read()
+    except (OSError, IOError) as e:
+        print(f"Error reading image file: {e}")
+        return
     
-    # Create packets
     packets = []
     file_id = 0
     packet_id = 0
@@ -45,21 +52,20 @@ def send_image(client, server_address):
         if offset + mss >= len(file_data):
             trailer = 0xFFFFFFFF  # Last packet
         packet = create_packet(packet_id % 65536, file_id, chunk, trailer)
-        packets.append(packet)
+        if packet:
+            packets.append(packet)
         packet_id += 1
         offset += mss
     
-    # Go-Back-N Sliding Window
     base = 0
     next_seq_num = 0
     retransmissions = 0
 
-    # Data for plotting
     sent_packets = []
     send_times = []
     retransmitted_packets = []
 
-    transfer_start_time = time.time()  # Measure start time of the transfer
+    transfer_start_time = time.time()
     total_packets = len(packets)
     total_bytes = image_size
 
@@ -71,7 +77,6 @@ def send_image(client, server_address):
             print(f"Sent packet {next_seq_num % 65536} of file {file_id}")
             next_seq_num += 1
         
-        # Start the timer
         start_time = time.time()
         
         while True:
@@ -90,11 +95,13 @@ def send_image(client, server_address):
                 next_seq_num = base  # Resend window
                 retransmitted_packets.append(base)
                 break
+            except struct.error as e:
+                print(f"Error unpacking ACK: {e}")
+                break
 
-    transfer_end_time = time.time()  # Measure end time of the transfer
+    transfer_end_time = time.time()
     elapsed_time = transfer_end_time - transfer_start_time
 
-    # Plot the sent packets
     plt.figure(figsize=(10, 6))
     plt.scatter(send_times, sent_packets, c='blue', label='Sent packets')
     plt.scatter([send_times[i] for i in retransmitted_packets], [sent_packets[i] for i in retransmitted_packets], c='red', label='Retransmitted packets')
@@ -118,4 +125,4 @@ def send_image(client, server_address):
 # Main
 server_address = (gethostname(), 8888)
 with socket(AF_INET, SOCK_DGRAM) as client:
-    send_image(client, server_address)
+    send_image(client,server_address)
